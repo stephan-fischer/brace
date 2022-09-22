@@ -13,7 +13,7 @@ var buildroot     =  path.join(__dirname, 'DefinitelyTyped');
 
 +function cloneFreshAndRemoveUnneeded() {
   rm('-rf', buildroot)
-  exec('git clone git://github.com/DefinitelyTyped/DefinitelyTyped.git ' + buildroot);
+  exec('git clone https://github.com/DefinitelyTyped/DefinitelyTyped.git ' + buildroot);
 
   ls(path.join(buildroot, 'types')).filter(function (name) { return name !== 'ace'; })
     .forEach(function (name) { rm('-rf', path.join(buildroot, name)) })

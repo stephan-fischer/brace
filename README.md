@@ -1,4 +1,5 @@
-# brace
+# brace fork
+Running on the latest ace version!
 
 [browserify](https://github.com/substack/node-browserify) compatible version of the [ace editor](http://ajaxorg.github.io/ace/).
 

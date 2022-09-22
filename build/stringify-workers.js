@@ -8,11 +8,8 @@ var path   =  require('path')
 
 
 function minify(code) {
-  var compressor = uglify.Compressor()
-    , ast = uglify.parse(code);
 
-  ast.figure_out_scope();
-  return ast.transform(compressor).print_to_string();
+    return     uglify.minify(code).code;
 }
 
 module.exports = function () {

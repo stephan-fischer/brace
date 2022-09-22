@@ -1,100 +1,136 @@
 // Type definitions for Ace Ajax.org Cloud9 Editor
-// Project: http://ace.ajax.org/
+// Project: https://ace.c9.io/
 // Definitions by: Diullei Gomes <https://github.com/Diullei>
+//                 wafuwafu13 <https://github.com/wafuwafu13>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 
 declare namespace AceAjax {
 
     export interface Delta {
-        action: string;
-        range: Range;
-        text: string;
+        action: 'insert' | 'remove';
+        start: Position;
+        end: Position;
         lines: string[];
     }
 
     export interface EditorCommand {
-
-        name:string;
-
-        bindKey:any;
-
-        exec: Function;
-
-        readOnly?: boolean;
+        name?: string | undefined;
+        bindKey?: string | { mac?: string | undefined, win?: string | undefined } | undefined;
+        exec: (editor: Editor, args?: any) => void;
+        readOnly?: boolean | undefined;
     }
 
+    interface CommandMap {
+        [name: string]: EditorCommand;
+    }
+
+    type execEventHandler = (obj: {
+        editor: Editor,
+        command: EditorCommand,
+        args: any[]
+    }) => void;
+
+    type CommandLike = EditorCommand | ((editor: Editor) => void);
+
     export interface CommandManager {
-
-        byName: any;
-
-        commands: any;
-
+        byName: CommandMap;
+        commands: CommandMap;
+        on(name: 'exec', callback: execEventHandler): Function;
+        on(name: 'afterExec', callback: execEventHandler): Function;
+        once(name: string, callback: Function): void;
+        setDefaultHandler(name: string, callback: Function): void;
+        removeDefaultHandler(name: string, callback: Function): void;
+        on(name: string, callback: Function, capturing?: boolean): Function;
+        addEventListener(name: string, callback: Function, capturing?: boolean): void;
+        off(name: string, callback: Function): void;
+        removeListener(name: string, callback: Function): void;
+        removeEventListener(name: string, callback: Function): void;
+        exec(command: string, editor: Editor, args: any): boolean;
+        toggleRecording(editor: Editor): void;
+        replay(editor: Editor): void;
+        addCommand(command: EditorCommand): void;
+        addCommands(commands: EditorCommand[]): void;
+        removeCommand(command: EditorCommand | string, keepCommand?: boolean): void;
+        removeCommands(command: EditorCommand[]): void;
+        bindKey(key: string | { mac?: string | undefined, win?: string | undefined },
+          command: CommandLike,
+          position?: number): void;
+        bindKeys(keys: {[s: string]: Function}): void;
+        parseKeys(keyPart: string): {key: string, hashId: number};
+        findKeyCommand(hashId: number, keyString: string): string | undefined;
+        handleKeyboard(data: {}, hashId: number, keyString: string, keyCode: string | number): void | {command: string};
+        getStatusText(editor: Editor, data: {}): string;
         platform: string;
-
-        addCommands(commands:EditorCommand[]): void;
-
-        addCommand(command:EditorCommand): void;
-
-        exec(name: string, editor: Editor, args: any): void;
     }
 
     export interface Annotation {
-
-         row: number;
-
-         column: number;
-
-         text: string;
-
-         type: string;
+        row?: number | undefined;
+        column?: number | undefined;
+        text: string;
+        type: string;
     }
 
     export interface TokenInfo {
-
+        type: string;
         value: string;
+        index?: number | undefined;
+        start?: number | undefined;
     }
 
     export interface Position {
-
         row: number;
-
         column: number;
     }
 
+    export interface KeyboardHandler {
+        handleKeyboard: Function;
+    }
+
     export interface KeyBinding {
-
-        setDefaultHandler(kb: any): void;
-
-        setKeyboardHandler(kb: any): void;
-
-        addKeyboardHandler(kb: any, pos: any): void;
-
-        removeKeyboardHandler(kb: any): boolean;
-
-        getKeyboardHandler(): any;
-
-        onCommandKey(e: any, hashId: any, keyCode: any): void;
-
-        onTextInput(text: any): void;
+        setDefaultHandler(kb: KeyboardHandler): void;
+        setKeyboardHandler(kb: KeyboardHandler): void;
+        addKeyboardHandler(kb: KeyboardHandler, pos: number): void;
+        removeKeyboardHandler(kb: KeyboardHandler): boolean;
+        getKeyboardHandler(): KeyboardHandler;
+        onCommandKey(e: any, hashId: number, keyCode: number): boolean;
+        onTextInput(text: string): boolean;
     }
 
     export interface TextMode {
+        getTokenizer(): Tokenizer;
+        toggleCommentLines(state: any, session: IEditSession, startRow: number, endRow: number): void;
+        toggleBlockComment(state: any, session: IEditSession, range: Range, cursor: Position): void;
+        getNextLineIndent (state: any, line: string, tab: string): string;
+        checkOutdent(state: any, line: string, input: string): boolean;
+        autoOutdent(state: any, doc: Document, row: number): void;
+        createWorker(session: IEditSession): any;
+        createModeDelegates (mapping: { [key: string]: string }): void;
+        transformAction(state: string, action: string, editor: Editor, session: IEditSession, text: string): any;
+        getKeywords(append?: boolean): Array<string | RegExp>;
+        getCompletions(state: string, session: IEditSession, pos: Position, prefix: string): Completion[];
+    }
 
-        getTokenizer(): any;
+    export interface OptionProvider {
 
-        toggleCommentLines(state: any, doc: any, startRow: any, endRow: any): void;
+        /**
+         * Sets a Configuration Option
+        **/
+        setOption(optionName: string, optionValue: any): void;
 
-        getNextLineIndent (state: any, line: any, tab: any): string;
+        /**
+         * Sets Configuration Options
+        **/
+        setOptions(keyValueTuples: { [key: string]: any }): void;
 
-        checkOutdent(state: any, line: any, input: any): boolean;
+        /**
+         * Get a Configuration Option
+        **/
+        getOption(name: string): any;
 
-        autoOutdent(state: any, doc: any, row: any): void;
-
-        createWorker(session: any): any;
-
-        createModeDelegates (mapping: any): void;
-
-        transformAction(state: any, action: any, editor: any, session: any, param: any): any;
+        /**
+         * Get Configuration Options
+        **/
+        getOptions(optionNames?: string[] | { [key: string]: any }): { [key: string]: any };
     }
 
     ////////////////
@@ -176,12 +212,14 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * @param column The column index to move the anchor to
          * @param noClip Identifies if you want the position to be clipped
         **/
-        setPosition(row: number, column: number, noClip: boolean): void;
+        setPosition(row: number, column: number, noClip?: boolean): void;
 
         /**
          * When called, the `'change'` event listener is removed.
         **/
         detach(): void;
+
+        attach(doc: Document): void;
     }
     var Anchor: {
         /**
@@ -264,6 +302,9 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
      * Contains the text of the document. Document can be attached to several [[EditSession `EditSession`]]s.
      * At its core, `Document`s are just an array of strings, with each row in the document matching up to the array index.
     **/
+
+    type NewLineMode = "auto" | "unix" | "windows";
+
     export interface Document {
 
         on(event: string, fn: (e: any) => any): void;
@@ -295,12 +336,12 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * [Sets the new line mode.]{: #Document.setNewLineMode.desc}
          * @param newLineMode [The newline mode to use; can be either `windows`, `unix`, or `auto`]{: #Document.setNewLineMode.param}
         **/
-        setNewLineMode(newLineMode: string): void;
+        setNewLineMode(newLineMode: NewLineMode): void;
 
         /**
          * [Returns the type of newlines being used; either `windows`, `unix`, or `auto`]{: #Document.getNewLineMode}
         **/
-        getNewLineMode(): string;
+        getNewLineMode(): NewLineMode;
 
         /**
          * Returns `true` if `text` is a newline character (either `\r\n`, `\r`, or `\n`).
@@ -337,38 +378,73 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         **/
         getTextRange(range: Range): string;
 
+        getLinesForRange(range: Range): string[];
+
         /**
          * Inserts a block of `text` and the indicated `position`.
          * @param position The position to start inserting at
          * @param text A chunk of text to insert
         **/
-        insert(position: Position, text: string): any;
+        insert(position: Position, text: string): Position;
 
         /**
-         * Inserts the elements in `lines` into the document, starting at the row index given by `row`. This method also triggers the `'change'` event.
-         * @param row The index of the row to insert at
-         * @param lines An array of strings
-        **/
-        insertLines(row: number, lines: string[]): any;
+         * @deprecated Use the insertFullLines method instead.
+         */
+        insertLines(row: number, lines: string[]): Position;
 
         /**
-         * Inserts a new line into the document at the current row's `position`. This method also triggers the `'change'` event.
-         * @param position The position to insert at
-        **/
-        insertNewLine(position: Position): any;
+         * Inserts the elements in `lines` into the document as full lines (does not merge with existing line), starting at the row index given by `row`. This method also triggers the `"change"` event.
+         * @param {Number} row The index of the row to insert at
+         * @param {Array} lines An array of strings
+         * @returns {Object} Contains the final row and column, like this:
+         *   ```
+         *   {row: endRow, column: 0}
+         *   ```
+         *   If `lines` is empty, this function returns an object containing the current row, and column, like this:
+         *   ```
+         *   {row: row, column: 0}
+         *   ```
+         *
+         **/
+        insertFullLines(row: number, lines: string[]): void;
+
+        /**
+         * @deprecated Use insertMergedLines(position, ['', '']) instead.
+         */
+        insertNewLine(position: Position): Position;
+
+        /**
+         * Inserts the elements in `lines` into the document, starting at the position index given by `row`. This method also triggers the `"change"` event.
+         * @param {Number} row The index of the row to insert at
+         * @param {Array} lines An array of strings
+         * @returns {Object} Contains the final row and column, like this:
+         *   ```
+         *   {row: endRow, column: 0}
+         *   ```
+         *   If `lines` is empty, this function returns an object containing the current row, and column, like this:
+         *   ```
+         *   {row: row, column: 0}
+         *   ```
+         *
+         **/
+        insertMergedLines(row: number, lines: string[]): Position;
 
         /**
          * Inserts `text` into the `position` at the current row. This method also triggers the `'change'` event.
          * @param position The position to insert at
          * @param text A chunk of text
         **/
-        insertInLine(position: any, text: string): any;
+        insertInLine(position: Position, text: string): Position;
+
+        clippedPos(row: number, column: number): Position;
+        clonePos(pos: Position): Position;
+        pos(row: number, column: number): Position;
 
         /**
          * Removes the `range` from the document.
          * @param range A specified Range to remove
         **/
-        remove(range: Range): any;
+        remove(range: Range): Position;
 
         /**
          * Removes the specified columns from the `row`. This method also triggers the `'change'` event.
@@ -376,14 +452,21 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * @param startColumn The column to start removing at
          * @param endColumn The column to stop removing at
         **/
-        removeInLine(row: number, startColumn: number, endColumn: number): any;
+        removeInLine(row: number, startColumn: number, endColumn: number): Position;
 
         /**
-         * Removes a range of full lines. This method also triggers the `'change'` event.
-         * @param firstRow The first row to be removed
-         * @param lastRow The last row to be removed
-        **/
+         * @deprecated Use the removeFullLines method instead.
+         */
         removeLines(firstRow: number, lastRow: number): string[];
+
+        /**
+         * Removes a range of full lines. This method also triggers the `"change"` event.
+         * @param {Number} firstRow The first row to be removed
+         * @param {Number} lastRow The last row to be removed
+         * @returns {[String]} Returns all the removed lines.
+         *
+         **/
+        removeFullLines(firstRow: number, lastRow: number): string[];
 
         /**
          * Removes the new line between `row` and the row immediately following it. This method also triggers the `'change'` event.
@@ -396,7 +479,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * @param range A specified Range to replace
          * @param text The new text to use as a replacement
         **/
-        replace(range: Range, text: string): any;
+        replace(range: Range, text: string): Position;
 
         /**
          * Applies all the changes previously accumulated. These can be either `'includeText'`, `'insertLines'`, `'removeText'`, and `'removeLines'`.
@@ -432,7 +515,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * @param pos The `{row, column}` to convert
          * @param startRow=0 The row from which to start the conversion
         **/
-        positionToIndex(pos: Position, startRow: number): number;
+        positionToIndex(pos: Position, startRow?: number): number;
     }
     var Document: {
         /**
@@ -455,7 +538,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
      * Stores all the data about [[Editor `Editor`]] state providing easy way to change editors state.
      * `EditSession` can be attached to only one [[Document `Document`]]. Same `Document` can be attached to several `EditSession`s.
     **/
-    export interface IEditSession {
+    export interface IEditSession extends OptionProvider {
 
         selection: Selection;
 
@@ -486,6 +569,16 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         getFoldsInRange(range: Range): any;
 
         highlight(text: string): void;
+
+
+        /**
+         * Highlight lines from `startRow` to `EndRow`.
+         * @param startRow Define the start line of the highlight
+         * @param endRow Define the end line of the highlight
+         * @param clazz Set the CSS class for the marker
+         * @param inFront Set to `true` to establish a front marker
+        **/
+        highlightLines(startRow:number, endRow: number, clazz: string, inFront: boolean): Range;
 
         /**
          * Sets the `EditSession` to point to a new `Document`. If a `BackgroundTokenizer` exists, it also points to `doc`.
@@ -539,7 +632,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * @param row The row number to retrieve from
          * @param column The column number to retrieve from
         **/
-        getTokenAt(row: number, column: number): TokenInfo;
+        getTokenAt(row: number, column: number): TokenInfo|null;
 
         /**
          * Sets the undo manager.
@@ -769,8 +862,9 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
 
         /**
          * [Sets the value of the distance between the left of the editor and the leftmost part of the visible content.]{: #EditSession.setScrollLeft}
+         * @param scrollLeft The new scroll left value
         **/
-        setScrollLeft(): void;
+        setScrollLeft(scrollLeft: number): void;
 
         /**
          * [Returns the value of the distance between the left of the editor and the leftmost part of the visible content.]{: #EditSession.getScrollLeft}
@@ -1034,7 +1128,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
      * The `Editor` manages the [[EditSession]] (which manages [[Document]]s), as well as the [[VirtualRenderer]], which draws everything to the screen.
      * Event sessions dealing with the mouse and keyboard are bubbled up from `Document` to the `Editor`, which decides what to do with them.
     **/
-    export interface Editor {
+    export interface Editor extends OptionProvider {
 
         on(ev: string, callback: (e: any) => any): void;
 
@@ -1053,7 +1147,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
 
         onTextInput(text: string): void;
 
-        onCommandKey(e: any, hashId: any, keyCode: any): void;
+        onCommandKey(e: any, hashId: number, keyCode: number): void;
 
         commands: CommandManager;
 
@@ -1072,26 +1166,6 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         onChangeMode(e?: any): void;
 
         execCommand(command:string, args?: any): void;
-
-        /**
-         * Sets a Configuration Option
-         **/
-        setOption(optionName: any, optionValue: any): void;
-
-        /**
-         * Sets Configuration Options
-         **/
-        setOptions(keyValueTuples: any): void;
-
-        /**
-         * Get a Configuration Option
-         **/
-        getOption(name: any):any;
-
-        /**
-         * Get Configuration Options
-         **/
-        getOptions():any;
 
         /**
          * Get rid of console warning by setting this to Infinity
@@ -1179,7 +1253,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         /**
          * Returns `true` if the current `textInput` is in focus.
         **/
-        isFocused(): void;
+        isFocused(): boolean;
 
         /**
          * Blurs the current `textInput`.
@@ -1295,7 +1369,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         /**
          * Returns `true` if current lines are always highlighted.
         **/
-        getHighlightActiveLine(): void;
+        getHighlightActiveLine(): boolean;
 
         /**
          * Determines if the currently selected word should be highlighted.
@@ -2437,16 +2511,25 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
 
     export interface Split {
 
+        BELOW: number;
+        BESIDE: number;
+
         /**
          * Returns the number of splits.
         **/
         getSplits(): number;
 
         /**
+         * Set the number of splits.
+         * @param splits The number of splits
+        **/
+        setSplits(splits?: number): void;
+
+        /**
          * Returns the editor identified by the index `idx`.
          * @param idx The index of the editor you want
         **/
-        getEditor(idx: number): void;
+        getEditor(idx: number): Editor;
 
         /**
          * Returns the current editor.
@@ -2512,7 +2595,7 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         resize(): void;
     }
     var Split: {
-        new(): Split;
+        Split(container: HTMLElement, theme?: any, splits?: number): void;
     }
 
     //////////////////
@@ -2572,7 +2655,9 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         /**
          * Returns an object containing two properties: `tokens`, which contains all the tokens; and `state`, the current state.
         **/
-        getLineTokens(): any;
+       removeCapturingGroups(src: string): string;
+       createSplitterRegexp(src: string, flag?: string): RegExp;
+       getLineTokens(line: string, startState: string | string[]): TokenInfo[];
     }
     var Tokenizer: {
         /**
@@ -2593,24 +2678,18 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
     export interface UndoManager {
 
         /**
-         * Provides a means for implementing your own undo manager. `options` has one property, `args`, an [[Array `Array`]], with two elements:
-         * - `args[0]` is an array of deltas
-         * - `args[1]` is the document to associate with
-         * @param options Contains additional properties
-        **/
-        execute(options: any): void;
-
-        /**
          * [Perform an undo operation on the document, reverting the last change.]{: #UndoManager.undo}
+         * @param session {:session}
          * @param dontSelect {:dontSelect}
         **/
-        undo(dontSelect?: boolean): Range;
+        undo(session?: IEditSession, dontSelect?: boolean): Range;
 
         /**
          * [Perform a redo operation on the document, reimplementing the last change.]{: #UndoManager.redo}
+         * @param session {:session}
          * @param dontSelect {:dontSelect}
         **/
-        redo(dontSelect: boolean): void;
+        redo(session?: IEditSession, dontSelect?: boolean): void;
 
         /**
          * Destroys the stack of undo and redo redo operations.
@@ -2620,22 +2699,39 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
         /**
          * Returns `true` if there are undo operations left to perform.
         **/
+        canUndo(): boolean;
+        /**
+         * Alias for canUndo
+        **/
         hasUndo(): boolean;
 
         /**
          * Returns `true` if there are redo operations left to perform.
         **/
+        canRedo(): boolean;
+        /**
+         * Alias for canRedo
+        **/
         hasRedo(): boolean;
 
         /**
-         * Returns `true` if the dirty counter is 0
+         * Returns if the current status is clean
+        **/
+        isAtBookmark(): boolean;
+        /**
+         * Alias for isAtBookmark
         **/
         isClean(): boolean;
 
         /**
-         * Sets dirty counter to 0
+         * Marks the current status clean
+         * @param rev {:rev}
         **/
-        markClean(): void;
+        bookmark(rev?: number): void;
+        /**
+         * Alias for bookmark
+        **/
+        markClean(rev?: number): void;
 
     }
     var UndoManager: {
@@ -2652,13 +2748,15 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
     /**
      * The class that is responsible for drawing everything you see on the screen!
     **/
-    export interface VirtualRenderer {
+    export interface VirtualRenderer extends OptionProvider {
 
         scroller: any;
 
         characterWidth: number;
 
         lineHeight: number;
+
+        $cursorLayer: Layer.Cursor;
 
         setScrollMargin(top:number, bottom:number, left: number, right: number): void;
 
@@ -2995,6 +3093,55 @@ export function         createEditSession(text: string, mode: TextMode): IEditSe
          * @param theme The starting theme
         **/
         new(container: HTMLElement, theme?: string): VirtualRenderer;
+    }
+
+    export interface Completer {
+        /**
+         * Provides possible completion results asynchronously using the given callback.
+         * @param editor The editor to associate with
+         * @param session The `EditSession` to refer to
+         * @param pos An object containing the row and column
+         * @param prefix The prefixing string before the current position
+         * @param callback Function to provide the results or error
+         */
+        getCompletions: (editor: Editor, session: IEditSession, pos: Position, prefix: string, callback: CompletionCallback) => void;
+
+        /**
+         * Provides tooltip information about a completion result.
+         * @param item The completion result
+         */
+        getDocTooltip?: ((item: Completion) => void) | undefined;
+    }
+
+    export interface Completion {
+        value: string;
+        meta: string;
+        type?: string | undefined;
+        caption?: string | undefined;
+        snippet?: any;
+        score?: number | undefined;
+        exactMatch?: number | undefined;
+        docHTML?: string | undefined;
+    }
+
+    export type CompletionCallback = (error: Error | null, results: Completion[]) => void;
+
+    ////////////////////
+    /// Layer
+    ////////////////////
+
+    export namespace Layer {
+
+        ////////////////////
+        /// Cursor
+        ////////////////////
+
+        export interface Cursor {
+            setBlinking(blinking: boolean): void;
+            setBlinkInterval(blinkInterval: number): void;
+            hideCursor(): void;
+            showCursor(): void;
+        }
     }
 }
 
